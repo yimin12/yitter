@@ -15,11 +15,11 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     # select * from user order by desc
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = UserSerializer
-    permission_classes = (permissions.IsAuthenticated)
+    permission_classes = (permissions.IsAuthenticated, )
 
 class AccountViewSet(viewsets.ViewSet):
     permission_classes = (AllowAny, )
-    serializer_class = UserSerializer
+    serializer_class = SignupSerializer ## provide HTML form for test
 
     @action(methods=['POST'], detail=False)
     def login(self, request):
@@ -28,6 +28,7 @@ class AccountViewSet(viewsets.ViewSet):
         '''
         serializer = LoginSerializer(data=request.data)
         if not serializer.is_valid():
+            print("wocaonima")
             return Response({
                 "success": False,
                 "message": "Please check input",
@@ -80,7 +81,10 @@ class AccountViewSet(viewsets.ViewSet):
         '''
         check the login status and personal information
         '''
-        data = {'has_logged_in': request.user.is_authenticated}
+        data = {
+            'has_logged_in': request.user.is_authenticated,
+            'ip': request.META['REMOTE_ADDR'],
+        }
         if request.user.is_authenticated:
             data['user'] = UserSerializer(request.user).data
         return Response(data)

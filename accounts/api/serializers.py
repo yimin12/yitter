@@ -6,7 +6,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         # the field you want to serializer
-        fields = ['username', 'email']
+        fields = ('username', 'email')
 
 class SignupSerializer(serializers.ModelSerializer):
     username = serializers.CharField(max_length=20, min_length=6)
@@ -22,7 +22,7 @@ class SignupSerializer(serializers.ModelSerializer):
             raise exceptions.ValidationError({
                 'message': 'This username has been used'
             })
-        if User.objects.filter(email=['email'].lower()).exists():
+        if User.objects.filter(email=data['email'].lower()).exists():
             raise exceptions.ValidationError({
                 'message': 'This email has been used'
             })
