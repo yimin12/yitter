@@ -16,13 +16,22 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
-from accounts.api import views
+
+from accounts.api.views import UserViewSet, AccountViewSet
+from tweets.api.views import TweetViewSet
+from friendships.api.views import FriendshipViewSet
+from newsfeeds.api.views import NewsFeedViewSet
+from comments.api.views import CommentViewSet
 
 import debug_toolbar
 
 router = routers.DefaultRouter()
-router.register(r'api/users', views.UserViewSet)
-router.register(r'api/accounts', views.AccountViewSet, basename='accounts')
+router.register(r'api/users', UserViewSet)
+router.register(r'api/accounts', AccountViewSet, basename='accounts')
+router.register(r'api/tweets', TweetViewSet, basename="tweets")
+router.register(r'api/friendships', FriendshipViewSet, basename='friendships')
+router.register(r'api/newsfeeds', NewsFeedViewSet, basename='newsfeeds')
+router.register(r'api/comments', CommentViewSet, basename='comments')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
