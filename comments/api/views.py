@@ -1,5 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
+from inbox.services import NotificationService
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from comments.models import Comment
 from comments.api.serializers import (
@@ -8,6 +9,7 @@ from comments.api.serializers import (
     CommentSerializerForUpdate,
 )
 from comments.api.permissions import IsObjectOwner  # authentication
+from utils.decorators import required_params
 
 class CommentViewSet(viewsets.GenericViewSet):
     """
@@ -25,15 +27,15 @@ class CommentViewSet(viewsets.GenericViewSet):
             return [IsAuthenticated(), IsObjectOwner()] # destroy and update need to be authenticated and check owner
         return [AllowAny()]
 
+    @required_params(params=['tweet_id'])
     def list(self, request, *args, **kwargs):
-        if 'tweet_id' not in request.query_params:
-            return Response({
-                'message': 'missing tweet_it in request',
-                'success': False,
-            }, status=status.HTTP_400_BAD_REQUEST,)
         queryset = self.get_queryset()
         comments = self.filter_queryset(queryset).order_by('created_at')
-        serializer = CommentSerializer(comments, many=True)
+        serializer = CommentSerializer(
+            comments,
+            context={'request': request},
+            many=True,
+        )
         return Response({
             'comments': serializer.data
         }, status=status.HTTP_200_OK,)
@@ -54,8 +56,9 @@ class CommentViewSet(viewsets.GenericViewSet):
 
         # save method will trigger the create method inside serializer
         comment = serializer.save()
+        NotificationService.send_comment_notification(comment)
         return Response(
-            CommentSerializer(comment).data,
+            CommentSerializer(comment, context={'request': request}).data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -72,7 +75,7 @@ class CommentViewSet(viewsets.GenericViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
         comment = serializer.save()
         return Response(
-            CommentSerializer(comment).data,
+            CommentSerializer(comment, context={'request': request}).data,
             status=status.HTTP_200_OK,
         )
 

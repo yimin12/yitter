@@ -4,6 +4,9 @@ from comments.models import Comment
 from django.utils import timezone
 
 COMMENT_URL = '/api/comments/'
+TWEET_LIST_API = '/api/tweets/'
+TWEET_DETAIL_API = '/api/tweets/{}/'
+NEWSFEED_LIST_API = '/api/newsfeeds/'
 
 class CommentApiTests(TestCase):
 
@@ -70,7 +73,7 @@ class CommentApiTests(TestCase):
             'created_at': now,
         })
         self.assertEqual(response.status_code, 200)
-        comment.refresh_from_db()
+        comment.refresh_from_db() # Any cached relations are cleared from the reloaded instance
         self.assertEqual(comment.content, 'new')
         self.assertEqual(comment.user, self.yimin)
         self.assertEqual(comment.tweet, self.tweet)
@@ -119,3 +122,23 @@ class CommentApiTests(TestCase):
             'user_id': self.yimin.id,
         })
         self.assertEqual(len(response.data['comments']), 2)
+
+    def test_comments_count(self):
+        tweet = self.create_tweet(self.yimin)
+        url = TWEET_DETAIL_API.format(tweet.id)
+        print(url)
+        response = self.yimin_client.get(url)
+        self.assertEqual(response.status_code, 200)
+        print(response.data)
+        self.assertEqual(response.data['comments_count'], 0)
+
+        self.create_comment(self.yimin, tweet)
+        response = self.theshy_client.get(TWEET_LIST_API, {'user_id': self.yimin.id})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['tweets'][0]['comments_count'], 1)
+
+        self.create_comment(self.theshy, tweet)
+        self.create_newsfeed(self.theshy, tweet)
+        response = self.theshy_client.get(NEWSFEED_LIST_API)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['newsfeeds'][0]['tweet']['comments_count'], 2)

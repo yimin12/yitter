@@ -7,6 +7,7 @@ List all API QUERY URL HERE, REMEMBER ADD '/' AT THE END, OR IT WILL LEAD TO RED
 '''
 TWEET_LIST_API = '/api/tweets/'  # get
 TWEET_CREATE_API = '/api/tweets/' # post
+TWEET_RETRIEVE_API = '/api/tweets/{}/'
 
 class TweetApiTests(TestCase):
 
@@ -63,3 +64,21 @@ class TweetApiTests(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data['user']['id'], self.yimin.id)
         self.assertEqual(Tweet.objects.count(), tweets_count + 1)
+
+    def test_retrieve(self):
+        # tweet with id = -1 does not exist
+        url = TWEET_RETRIEVE_API.format(-1)
+        response = self.anonymous_client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+        # take tweet and comments
+        tweet = self.create_tweet(self.yimin)
+        url = TWEET_RETRIEVE_API.format(tweet.id)
+        response = self.anonymous_client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['comments']), 0)
+
+        self.create_comment(self.theshy, tweet, 'holly s***')
+        self.create_comment(self.yimin, tweet, 'hmm...')
+        response = self.anonymous_client.get(url)
+        self.assertEqual(len(response.data['comments']), 2)

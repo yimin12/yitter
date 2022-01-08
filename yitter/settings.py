@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/3.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.1/ref/settings/
 """
-
+import sys
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -22,8 +22,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'dcrto3i!!4jo+iv*(kzx@wu15*0#!!s3#$w$12v-m+&(1j#d%x'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '192.168.44.135']
 INTERNAL_IPS = ['192.168.0.134']
@@ -41,12 +39,14 @@ INSTALLED_APPS = [
     'rest_framework',
     'debug_toolbar',
     'django_filters',
+    'notifications',
     # own project apps
     'accounts',
     'tweets',
     'friendships',
     'newsfeeds',
-    'comments'
+    'comments',
+    'likes',
 ]
 
 REST_FRAMEWORK = {
@@ -87,23 +87,17 @@ TEMPLATES = [
     },
 ]
 
+# what system would you use to upload
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+TESTING = ((" ".join(sys.argv)).find('manage.py test') != -1)
+if TESTING:
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage' # Simulate storage for test environment
+
+AWS_STORAGE_BUCKET_NAME = 'django-twitter'
+AWS_S3_REGION_NAME = 'us-west-1'
+MEDIA_ROOT = 'media/'
+
 WSGI_APPLICATION = 'yitter.wsgi.application'
-
-
-# Database
-# https://docs.djangoproject.com/en/3.1/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'yitter',
-        'HOST': 'localhost',
-        'PORT': '3306',
-        'USER': 'root',
-        'PASSWORD': '12345678',
-    }
-}
-
 
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
@@ -142,3 +136,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+try:
+    from .local_settings import *
+except:
+    pass
