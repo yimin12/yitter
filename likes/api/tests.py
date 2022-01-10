@@ -13,6 +13,7 @@ NEWSFEED_LIST_API = '/api/newsfeeds/'
 class LikeApiTests(TestCase):
 
     def setUp(self):
+        super(LikeApiTests, self).setUp()
         self.yimin, self.yimin_client = self.create_user_and_client('yimin')
         self.theshy, self.theshy_client = self.create_user_and_client('theshy')
 
@@ -182,16 +183,16 @@ class LikeApiTests(TestCase):
         # test tweets list api
         response = self.theshy_client.get(TWEET_LIST_API, {'user_id': self.yimin.id})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['tweets'][0]['has_liked'], True)
-        self.assertEqual(response.data['tweets'][0]['likes_count'], 1)
+        self.assertEqual(response.data['results'][0]['has_liked'], True)
+        self.assertEqual(response.data['results'][0]['likes_count'], 1)
 
         # test newsfeeds list api
         self.create_like(self.yimin, tweet)
         self.create_newsfeed(self.theshy, tweet)
         response = self.theshy_client.get(NEWSFEED_LIST_API)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['newsfeeds'][0]['tweet']['has_liked'], True)
-        self.assertEqual(response.data['newsfeeds'][0]['tweet']['likes_count'], 2)
+        self.assertEqual(response.data['results'][0]['tweet']['has_liked'], True)
+        self.assertEqual(response.data['results'][0]['tweet']['likes_count'], 2)
 
         # test likes details
         url = TWEET_DETAIL_API.format(tweet.id)
@@ -199,3 +200,61 @@ class LikeApiTests(TestCase):
         self.assertEqual(len(response.data['likes']), 2)
         self.assertEqual(response.data['likes'][0]['user']['id'], self.yimin.id)
         self.assertEqual(response.data['likes'][1]['user']['id'], self.theshy.id)
+
+    def test_likes_count(self):
+        tweet = self.create_tweet(self.yimin)
+        data = {'content_type': 'tweet', 'object_id': tweet.id}
+        self.yimin_client.post(LIKE_BASE_URL, data)
+
+        tweet_url = TWEET_DETAIL_API.format(tweet.id)
+        response = self.yimin_client.get(tweet_url)
+        self.assertEqual(response.data['likes_count'], 1)
+        tweet.refresh_from_db()
+        self.assertEqual(tweet.likes_count, 1)
+
+        # theshy canceled likes
+        self.yimin_client.post(LIKE_BASE_URL + 'cancel/', data)
+        tweet.refresh_from_db()
+        self.assertEqual(tweet.likes_count, 0)
+        response = self.theshy_client.get(tweet_url)
+        self.assertEqual(response.data['likes_count'], 0)
+
+    def test_likes_count_with_cache(self):
+        tweet = self.create_tweet(self.yimin)
+        self.create_newsfeed(self.yimin, tweet)
+        self.create_newsfeed(self.theshy, tweet)
+
+        data = {'content_type': 'tweet', 'object_id': tweet.id}
+        tweet_url = TWEET_DETAIL_API.format(tweet.id)
+        for i in range(3):
+            _, client = self.create_user_and_client('someone{}'.format(i))
+            client.post(LIKE_BASE_URL, data)
+            # check tweet api
+            response = client.get(tweet_url)
+            self.assertEqual(response.data['likes_count'], i + 1)
+            tweet.refresh_from_db()
+            self.assertEqual(tweet.likes_count, i + 1)
+
+        self.theshy_client.post(LIKE_BASE_URL, data)
+        response = self.theshy_client.get(tweet_url)
+        self.assertEqual(response.data['likes_count'], 4)
+        tweet.refresh_from_db()
+        self.assertEqual(tweet.likes_count, 4)
+
+        # check newsfeed api
+        newsfeed_url = '/api/newsfeeds/'
+        response = self.yimin_client.get(newsfeed_url)
+        self.assertEqual(response.data['results'][0]['tweet']['likes_count'], 4)
+        response = self.theshy_client.get(newsfeed_url)
+        self.assertEqual(response.data['results'][0]['tweet']['likes_count'], 4)
+
+        # theshy canceled likes
+        self.theshy_client.post(LIKE_BASE_URL + 'cancel/', data)
+        tweet.refresh_from_db()
+        self.assertEqual(tweet.likes_count, 3)
+        response = self.theshy_client.get(tweet_url)
+        self.assertEqual(response.data['likes_count'], 3)
+        response = self.yimin_client.get(newsfeed_url)
+        self.assertEqual(response.data['results'][0]['tweet']['likes_count'], 3)
+        response = self.theshy_client.get(newsfeed_url)
+        self.assertEqual(response.data['results'][0]['tweet']['likes_count'], 3)

@@ -11,11 +11,11 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 import sys
 from pathlib import Path
-
+from kombu import Queue
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+DEBUG = True
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
@@ -117,6 +117,45 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# DO NOT pip install memcache or django-memcached
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': '127.0.0.1:11211',
+        'TIMEOUT': 86400,
+    },
+    'testing': {
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': '127.0.0.1:11211',
+        'TIMEOUT': 86400,
+        'KEY_PREFIX': 'testing',
+    },
+    'ratelimit': {
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': '127.0.0.1:11211',
+        'TIMEOUT': 86400 * 7,
+        'KEY_PREFIX': 'rl',
+    },
+}
+
+# Redis configuration
+REDIS_HOST = '127.0.0.1' # local
+REDIS_PORT = 6379
+REDIS_DB = 0 if TESTING else 1
+REDIS_KEY_EXPIRE_TIME = 7 * 86400
+REDIS_LIST_LENGTH_LIMIT = 1000 if not TESTING else 20
+
+# Celery Configuration Options
+CELERY_ROKER_URL = 'redis://127.0.0.1:6379/2' if not TESTING else 'redis://127.0.0.1:6379/0'
+CELERY_TIMEZONE = "UTC"
+CELERY_TASK_ALWAYS_EAGER = TESTING
+CELERY_QUEUES = (
+    Queue('default', routing_key='default'),
+    Queue('newsfeeds', routing_key='newsfeeds'),
+)
+
+# HBase Database
+HBASE_HOST = '127.0.0.1'
 
 # Internationalization
 # https://docs.djangoproject.com/en/3.1/topics/i18n/
@@ -136,6 +175,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+# Rate Limiter
+RATELIMIT_USE_CACHE = 'ratelimit'
+RATELIMIT_CACHE_PREFIX = 'rl:'   # 避免和其他的 key 冲突
+RATELIMIT_ENABLE = not TESTING  # 在某些环境下，比如内部测试等环境下，一般也会关掉
 
 try:
     from .local_settings import *
