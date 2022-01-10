@@ -1,5 +1,6 @@
 from django.contrib import admin
-from tweets.models import Tweet
+from tweets.models import Tweet, tweet_photo
+
 
 @admin.register(Tweet)
 class TweetAdmin(admin.ModelAdmin):
@@ -10,7 +11,7 @@ class TweetAdmin(admin.ModelAdmin):
         'content',
     )
 
-@admin.register(TweetPhoto)
+@admin.register(tweet_photo)
 class TweetPhotoAdmin(admin.ModelAdmin):
     list_display = (
         'tweet',

@@ -8,7 +8,7 @@ from tweets.models import Tweet
 
 
 class LikeSerializer(serializers.ModelSerializer):
-    user = UserSerializerForLike()
+    user = UserSerializerForLike(source='cached_user')
 
     class Meta:
         model = Like
@@ -42,7 +42,7 @@ class BaseLikeSerializerForCreateAndCancel(serializers.ModelSerializer):
 
 class LikeSerializerForCreate(BaseLikeSerializerForCreateAndCancel):
 
-    def get_or_create(self, validated_data):
+    def get_or_create(self):
         model_class = self._get_model_class(self.validated_data)
         return Like.objects.get_or_create(
             content_type=ContentType.objects.get_for_model(model_class),
